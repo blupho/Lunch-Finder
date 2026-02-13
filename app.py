@@ -91,12 +91,16 @@ def get_recommendations(api_key, address, radius_miles):
                 if candidates:
                     # Pick one random restaurant
                     choice = random.choice(candidates)
+                    price_level = choice.get('price_level', None)
+                    price_str = "💰" * price_level if price_level else "Price not available"
+                    
                     recommendations.append({
                         "cuisine": cuisine,
                         "name": choice.get('name'),
                         "rating": choice.get('rating'),
                         "address": choice.get('vicinity'),
-                        "place_id": choice.get('place_id')
+                        "place_id": choice.get('place_id'),
+                        "price": price_str
                     })
                 else:
                     recommendations.append({
@@ -163,6 +167,7 @@ def main():
                             else:
                                 st.success(f"**{res['name']}**")
                                 st.write(f"⭐ {res['rating']}")
+                                st.write(f"{res.get('price', 'Price not available')}")
                                 st.write(f"📍 {res['address']}")
                                 google_maps_link = f"https://www.google.com/maps/place/?q=place_id:{res['place_id']}"
                                 st.markdown(f"[View on Maps]({google_maps_link})")
