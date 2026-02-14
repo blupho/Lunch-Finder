@@ -123,6 +123,19 @@ def get_recommendations(api_key, address, radius_miles, lat_lng=None):
                 "error": f"API Error: {str(e)}"
             })
             
+            
+    # Fetch reviews for selected restaurants
+    for rec in recommendations:
+        if "place_id" in rec and not "error" in rec:
+            try:
+                # Fetch only reviews to save data/latency
+                details = gmaps.place(place_id=rec['place_id'], fields=['reviews'])
+                if 'result' in details and 'reviews' in details['result']:
+                    # Take top 3 reviews
+                    rec['reviews'] = details['result']['reviews'][:3]
+            except Exception as e:
+                print(f"Error fetching reviews for {rec.get('name')}: {e}")
+                
     return recommendations, None
 
 def main():
@@ -191,6 +204,15 @@ def main():
                                 st.write(f"📍 {res['address']}")
                                 google_maps_link = f"https://www.google.com/maps/place/?q=place_id:{res['place_id']}"
                                 st.markdown(f"[View on Maps]({google_maps_link})")
+                                
+                                # Display Reviews
+                                if 'reviews' in res and res['reviews']:
+                                    with st.expander("See Reviews"):
+                                        for review in res['reviews']:
+                                            st.markdown(f"**{review.get('author_name', 'Unknown')}** ({review.get('rating')}⭐)")
+                                            st.write(f"_{review.get('relative_time_description', '')}_")
+                                            st.write(review.get('text', 'No text.'))
+                                            st.markdown("---")
     
     if st.button("Try Again"):
          st.session_state['rerun'] = True
