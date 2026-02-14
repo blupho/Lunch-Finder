@@ -1,3 +1,4 @@
 streamlit
 googlemaps
 python-dotenv
+streamlit-js-eval

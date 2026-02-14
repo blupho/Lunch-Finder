@@ -3,6 +3,7 @@ import googlemaps
 import os
 import random
 from dotenv import load_dotenv
+from streamlit_js_eval import get_geolocation
 
 # Load environment variables
 load_dotenv()
@@ -43,21 +44,24 @@ CUISINES = [
     "Seafood", "Chinese", "Japanese", "Vietnamese"
 ]
 
-def get_recommendations(api_key, address, radius_miles):
+def get_recommendations(api_key, address, radius_miles, lat_lng=None):
     """
     Fetches recommendations based on address and radius.
     """
     gmaps = googlemaps.Client(key=api_key)
     
     # Geocode the address
-    try:
-        geocode_result = gmaps.geocode(address)
-        if not geocode_result:
-            return None, "Address not found."
-        
-        location = geocode_result[0]['geometry']['location']
-    except Exception as e:
-        return None, f"Error geocoding address: {str(e)}"
+    if lat_lng:
+        location = lat_lng
+    else:
+        try:
+            geocode_result = gmaps.geocode(address)
+            if not geocode_result:
+                return None, "Address not found."
+            
+            location = geocode_result[0]['geometry']['location']
+        except Exception as e:
+            return None, f"Error geocoding address: {str(e)}"
 
     # Convert radius to meters
     radius_meters = int(radius_miles * 1609.34)
@@ -135,8 +139,21 @@ def main():
         api_key = st.sidebar.text_input("Google Maps API Key", type="password", help="Enter your Google Maps API Key here.")
     
     # Address Input
-    default_address = "300 Beltway Green Blvd. Pasadena, TX 77503"
-    address = st.sidebar.text_input("Current Address", value=default_address)
+    use_location = st.sidebar.checkbox("Use Current Location")
+    
+    lat_lng = None
+    address = None
+    
+    if use_location:
+         loc = get_geolocation()
+         if loc:
+             lat_lng = {"lat": loc['coords']['latitude'], "lng": loc['coords']['longitude']}
+             st.sidebar.success(f"Location detected: {lat_lng['lat']:.4f}, {lat_lng['lng']:.4f}")
+         else:
+             st.sidebar.warning("Getting location... (Allow permissions in browser)")
+    else:
+        default_address = "300 Beltway Green Blvd. Pasadena, TX 77503"
+        address = st.sidebar.text_input("Current Address", value=default_address)
     
     # Radius Slider
     radius = st.sidebar.slider("Search Radius (miles)", min_value=1, max_value=10, value=3)
@@ -149,11 +166,14 @@ def main():
         
         if not api_key:
             st.error("Please enter a Google Maps API Key in the sidebar.")
-        elif not address:
-            st.error("Please enter an address.")
+        elif not address and not lat_lng:
+             if use_location:
+                 st.error("Waiting for location... Please allow permissions or uncheck 'Use Current Location' to enter address manually.")
+             else:
+                st.error("Please enter an address.")
         else:
             with st.spinner("Finding the best spots..."):
-                results, error = get_recommendations(api_key, address, radius)
+                results, error = get_recommendations(api_key, address, radius, lat_lng)
                 
                 if error:
                     st.error(error)
